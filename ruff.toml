@@ -1,0 +1,4 @@
+line-length = 160
+target-version = "py37"
+[lint]
+select = ["E", "F", "W", "B"]

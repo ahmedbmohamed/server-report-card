@@ -1,0 +1,6 @@
+---
+- name: Install server-report-card
+  hosts: all
+  become: true
+  roles:
+    - report_card

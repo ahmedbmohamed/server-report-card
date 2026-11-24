@@ -1,0 +1,72 @@
+---
+- name: Python 3 is installed
+  ansible.builtin.package:
+    name: python3
+    state: present
+
+- name: Program folders exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /opt/server-report-card, mode: "0755" }
+    - { path: /etc/server-report-card, mode: "0700" }
+    - { path: /var/lib/server-report-card, mode: "0700" }
+
+- name: Program is copied
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../reportcard"
+    dest: /opt/server-report-card/
+    owner: root
+    group: root
+    mode: u=rwX,go=rX
+
+- name: Command is installed
+  ansible.builtin.copy:
+    dest: /usr/local/bin/server-report-card
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      PYTHONPATH=/opt/server-report-card exec /usr/bin/python3 -m reportcard "$@"
+
+- name: Config is written
+  ansible.builtin.template:
+    src: config.ini.j2
+    dest: /etc/server-report-card/config.ini
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: "{{ report_card_email_smtp_password | length > 0 or report_card_telegram_bot_token | length > 0 }}"
+
+- name: Services and timers are installed
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../deploy/systemd/server-report-card-{{ item.0 }}.{{ item.1 }}"
+    dest: /etc/systemd/system/
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ ['collect', 'alerts', 'report', 'restore-test'] | product(['service', 'timer']) | list }}"
+  register: report_card_units
+
+- name: Timers are enabled
+  ansible.builtin.systemd:
+    name: "server-report-card-{{ item }}.timer"
+    enabled: true
+    state: started
+    daemon_reload: "{{ report_card_units is changed }}"
+  loop: [collect, alerts, report, restore-test]
+
+- name: First results are collected
+  ansible.builtin.command: /usr/local/bin/server-report-card collect --quiet
+  args:
+    creates: /var/lib/server-report-card/state.json
+
+- name: First report is sent
+  ansible.builtin.command: /usr/local/bin/server-report-card report --send
+  when: report_card_send_first_report | bool
+  changed_when: true

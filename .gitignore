@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+demo-report.html
+reports/
+ansible/inventory/hosts.yml
+*.retry

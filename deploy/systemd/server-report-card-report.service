@@ -1,0 +1,14 @@
+[Unit]
+Description=server-report-card: send the weekly report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/server-report-card report --send
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectHome=read-only
+NoNewPrivileges=true
+TimeoutStartSec=30min

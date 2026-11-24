@@ -1,0 +1,18 @@
+---
+all:
+  hosts:
+    shop-web-01:
+      ansible_host: 203.0.113.10
+      report_card_report_client_name: Example Shop Ltd
+      report_card_website_urls: [https://shop.example.com]
+      report_card_email_dns_domains: [example.com]
+      report_card_email_dns_dkim_selectors: [google]
+      report_card_server_services: [nginx, postgresql]
+  vars:
+    report_card_report_provider_name: Your Name
+    report_card_email_enabled: true
+    report_card_email_smtp_host: smtp.gmail.com
+    report_card_email_smtp_user: you@example.com
+    report_card_email_smtp_password: "{{ vault_smtp_password }}"
+    report_card_email_from: you@example.com
+    report_card_email_to: [owner@example.com]

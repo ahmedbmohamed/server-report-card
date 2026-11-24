@@ -1,0 +1,10 @@
+[Unit]
+Description=server-report-card: monthly backup restore test
+
+[Timer]
+OnCalendar=*-*-01 04:20:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

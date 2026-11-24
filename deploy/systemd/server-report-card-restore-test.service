@@ -1,0 +1,14 @@
+[Unit]
+Description=server-report-card: monthly backup restore test
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/server-report-card restore-test
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectHome=read-only
+NoNewPrivileges=true
+TimeoutStartSec=3h

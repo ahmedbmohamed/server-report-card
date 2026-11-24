@@ -1,0 +1,14 @@
+[Unit]
+Description=server-report-card: hourly fast checks, alert on urgent problems
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/server-report-card alerts --quiet
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+ProtectHome=read-only
+NoNewPrivileges=true
+TimeoutStartSec=10min

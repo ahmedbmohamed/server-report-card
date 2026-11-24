@@ -1,0 +1,48 @@
+# {{ ansible_managed }}
+[report]
+server_name = {{ report_card_report_server_name }}
+client_name = {{ report_card_report_client_name }}
+provider_name = {{ report_card_report_provider_name }}
+provider_contact = {{ report_card_report_provider_contact }}
+
+[email]
+enabled = {{ report_card_email_enabled | bool | lower }}
+smtp_host = {{ report_card_email_smtp_host }}
+smtp_port = {{ report_card_email_smtp_port }}
+security = {{ report_card_email_security }}
+smtp_user = {{ report_card_email_smtp_user }}
+smtp_password = {{ report_card_email_smtp_password }}
+from = {{ report_card_email_from }}
+to = {{ report_card_email_to | join(', ') }}
+alerts_to = {{ report_card_email_alerts_to | join(', ') }}
+
+[telegram]
+enabled = {{ report_card_telegram_enabled | bool | lower }}
+bot_token = {{ report_card_telegram_bot_token }}
+chat_id = {{ report_card_telegram_chat_id }}
+
+[website]
+urls = {{ report_card_website_urls | join(', ') }}
+domains = {{ report_card_website_domains | join(', ') }}
+verify_ssl = {{ report_card_website_verify_ssl | bool | lower }}
+
+[email_dns]
+domains = {{ report_card_email_dns_domains | join(', ') }}
+dkim_selectors = {{ report_card_email_dns_dkim_selectors | join(', ') }}
+server_ips = {{ report_card_email_dns_server_ips | join(', ') }}
+
+[backups]
+marker_files = {{ report_card_backups_marker_files | join(', ') }}
+max_age_hours = {{ report_card_backups_max_age_hours }}
+restore_test_path = {{ report_card_backups_restore_test_path }}
+required = {{ report_card_backups_required | bool | lower }}
+
+[security]
+require_fail2ban = {{ report_card_security_require_fail2ban | bool | lower }}
+require_firewall = {{ report_card_security_require_firewall | bool | lower }}
+ignore_ports = {{ report_card_security_ignore_ports | join(', ') }}
+
+[server]
+services = {{ report_card_server_services | join(', ') }}
+disk_warn = {{ report_card_server_disk_warn }}
+disk_crit = {{ report_card_server_disk_crit }}

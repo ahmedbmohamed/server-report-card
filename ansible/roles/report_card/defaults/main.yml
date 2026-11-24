@@ -1,0 +1,43 @@
+---
+# Everything below ends up in /etc/server-report-card/config.ini (see config.example.ini for details).
+report_card_report_server_name: "{{ inventory_hostname }}"
+report_card_report_client_name: ""
+report_card_report_provider_name: ""        # freelancers: your name, shown in the footer
+report_card_report_provider_contact: ""
+
+report_card_email_enabled: false
+report_card_email_smtp_host: ""
+report_card_email_smtp_port: 587
+report_card_email_security: starttls
+report_card_email_smtp_user: ""
+report_card_email_smtp_password: ""         # put it in Ansible Vault
+report_card_email_from: ""
+report_card_email_to: []
+report_card_email_alerts_to: []
+
+report_card_telegram_enabled: false
+report_card_telegram_bot_token: ""          # put it in Ansible Vault
+report_card_telegram_chat_id: ""
+
+report_card_website_urls: []
+report_card_website_domains: []
+report_card_website_verify_ssl: true
+
+report_card_email_dns_domains: []
+report_card_email_dns_dkim_selectors: []
+report_card_email_dns_server_ips: []
+
+report_card_backups_marker_files: []
+report_card_backups_max_age_hours: 26
+report_card_backups_restore_test_path: /etc
+report_card_backups_required: true
+
+report_card_security_require_fail2ban: true
+report_card_security_require_firewall: true
+report_card_security_ignore_ports: []
+
+report_card_server_services: []
+report_card_server_disk_warn: 85
+report_card_server_disk_crit: 95
+
+report_card_send_first_report: false        # send a first report right after installing

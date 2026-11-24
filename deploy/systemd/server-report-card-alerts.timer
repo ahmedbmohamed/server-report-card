@@ -1,0 +1,10 @@
+[Unit]
+Description=server-report-card: hourly fast checks, alert on urgent problems
+
+[Timer]
+OnCalendar=hourly
+OnBootSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

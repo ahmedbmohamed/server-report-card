@@ -1,0 +1,10 @@
+[Unit]
+Description=server-report-card: run every check and save today's results
+
+[Timer]
+OnCalendar=*-*-* 06:15:00
+RandomizedDelaySec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

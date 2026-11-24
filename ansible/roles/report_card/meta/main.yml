@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: Ahmed Benmohamed
+  description: Weekly server health and security report in plain English, with urgent alerts
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: EL
+      versions: ["8", "9"]
+    - name: Ubuntu
+      versions: [focal, jammy, noble]
+    - name: Debian
+      versions: [bullseye, bookworm]
+dependencies: []
