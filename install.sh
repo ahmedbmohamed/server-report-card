@@ -30,7 +30,8 @@ cp -r "$SRC/reportcard" "$PREFIX/"
 find "$PREFIX" -name '__pycache__' -prune -exec rm -rf {} +
 cat > /usr/local/bin/server-report-card <<EOF
 #!/bin/sh
-PYTHONPATH=$PREFIX exec $PY -m reportcard "\$@"
+# -I: never load code from the current folder or user site-packages (this runs as root)
+exec $PY -I -c 'import sys; sys.path.insert(0, "$PREFIX"); from reportcard.cli import main; sys.exit(main())' "\$@"
 EOF
 chmod 755 /usr/local/bin/server-report-card
 

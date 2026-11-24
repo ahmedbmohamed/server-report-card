@@ -32,7 +32,8 @@
     mode: "0755"
     content: |
       #!/bin/sh
-      PYTHONPATH=/opt/server-report-card exec /usr/bin/python3 -m reportcard "$@"
+      # -I: never load code from the current folder or user site-packages (this runs as root)
+      exec /usr/bin/python3 -I -c 'import sys; sys.path.insert(0, "/opt/server-report-card"); from reportcard.cli import main; sys.exit(main())' "$@"
 
 - name: Config is written
   ansible.builtin.template:
