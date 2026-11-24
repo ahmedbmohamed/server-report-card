@@ -22,7 +22,7 @@ def test_backup_status_files(cfg, tmp_path):
     m = {}
     out = {r["id"]: r for r in backups.check_backups(Context(c, {}, now - 86400, now), m)}
     assert out["backup:shop"]["status"] == OK
-    assert out["backup:old"]["status"] == CRIT and "3 days" in out["backup:old"]["title"]
+    assert out["backup:old"]["status"] == CRIT and "3 days old" in out["backup:old"]["title"]
     assert out["backup:bad"]["status"] == CRIT and "failed" in out["backup:bad"]["title"]
     assert m["backup_ok"] is False
 
@@ -146,3 +146,17 @@ def test_self_signed_certificate_is_read(tmp_path):
     srv.close()
     assert 38 < left <= 40
     assert problem and "self" in problem.lower()
+
+
+def test_restore_compare_ignores_files_rewritten_with_old_mtime(tmp_path):
+    """Package updates rewrite files but keep the package's old mtime: ctime tells the truth."""
+    live, restored = tmp_path / "live", tmp_path / "restored"
+    (live / "etc").mkdir(parents=True)
+    f = live / "etc" / "pkg.conf"
+    f.write_text("new version")
+    os.utime(str(f), (1_000_000, 1_000_000))          # mtime from 1970, ctime = now
+    rdir = restored / str(live / "etc").lstrip("/")
+    rdir.mkdir(parents=True)
+    (rdir / "pkg.conf").write_text("old version")
+    snapshot_time = time.time() - 3600                 # backup taken an hour ago, file changed after
+    assert backups.compare(str(live / "etc"), str(restored), snapshot_time) == (0, [], [])

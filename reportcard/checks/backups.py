@@ -118,17 +118,17 @@ def check_backups(ctx, metrics):
             continue
         age = ctx.now - b["time"] if b["time"] else None
         if not b["ok"]:
-            out.append(result("backup:" + b["name"], AREA, CRIT, "The last backup failed (%s ago)." % human_age(age) if age else
+            out.append(result("backup:" + b["name"], AREA, CRIT, "Backup %s: the last run failed (%s ago)." % (b["name"], human_age(age)) if age else
                               "The backup has never completed.",
                               why="If something breaks now, recent data cannot be recovered.",
                               action="Fix the backup today.", detail=b.get("detail", "")))
         elif age > max_age:
-            out.append(result("backup:" + b["name"], AREA, CRIT, "The last good backup is %s old." % human_age(age),
+            out.append(result("backup:" + b["name"], AREA, CRIT, "Backup %s: the last good backup is %s old." % (b["name"], human_age(age)),
                               why="The daily backup has stopped running.",
                               action="Find out why the backup stopped and run it now.", detail=b.get("detail", "")))
         else:
             good += 1
-            out.append(result("backup:" + b["name"], AREA, OK, "Last backup %s ago, it worked." % human_age(age),
+            out.append(result("backup:" + b["name"], AREA, OK, "Backup %s: last run %s ago, it worked." % (b["name"], human_age(age)),
                               detail="%s %s" % (b["name"], b.get("detail", ""))))
     metrics["backup_ok"] = good == len(shown)
     metrics["backups"] = [{k: v for k, v in b.items() if k != "env"} for b in found]
@@ -155,7 +155,8 @@ def compare(live_root, restored_root, snapshot_time, limit=2000):
                 st = os.lstat(live)
             except OSError:
                 continue
-            if not os.path.isfile(live) or os.path.islink(live) or st.st_mtime >= snapshot_time - 1:
+            # ctime too: package updates write files but keep an old mtime
+            if not os.path.isfile(live) or os.path.islink(live) or max(st.st_mtime, st.st_ctime) >= snapshot_time - 1:
                 continue
             restored = os.path.join(restored_root, live.lstrip("/"))
             if not os.path.isfile(restored):

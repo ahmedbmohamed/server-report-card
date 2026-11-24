@@ -145,6 +145,10 @@ def cmd_restore_test(cfg, store, args):
         print("%s: %s, %s files compared, %d different, %d missing, %ss%s" % (
             r["name"], "PASSED" if r["ok"] else "FAILED", r.get("files_checked", 0), len(r.get("different", [])),
             len(r.get("missing", [])), r.get("seconds"), (" (" + r["error"] + ")") if r.get("error") else ""))
+        for f in r.get("different", [])[:10]:
+            print("   different: %s" % f)
+        for f in r.get("missing", [])[:10]:
+            print("   missing:   %s" % f)
     if res.get("error"):
         print("FAILED: %s" % res["error"])
     return 0 if res.get("ok") else 1

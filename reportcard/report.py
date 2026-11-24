@@ -132,8 +132,13 @@ def build(cfg, snapshots, events=(), now=None, days=7):
     m = latest["metrics"]
     hl = []
     if days_with_data:
-        hl.append(("backups", worst(r["status"] for r in findings if r["area"] == "backups"),
-                   "Backups: %d of %d days OK." % (ok_days, len(days_with_data))))
+        restore = [r for r in findings if r["id"] == "restore"]
+        text = "Backups: %d of %d days OK." % (ok_days, len(days_with_data))
+        if restore and restore[0]["status"] == CRIT:
+            text += " But the last restore test FAILED."
+        elif restore and restore[0]["status"] == OK:
+            text += " Restore test passed."
+        hl.append(("backups", worst(r["status"] for r in findings if r["area"] == "backups"), text))
     if any(r["area"] == "security" for r in findings):
         hl.append(("security", WARN if worst(statuses.get("ssh.attacks", [OK])) == WARN else OK,
                    "Security: %s break-in attempts, none got in." % fmt_int(attempts) if attempts else
