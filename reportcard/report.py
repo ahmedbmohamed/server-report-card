@@ -140,9 +140,12 @@ def build(cfg, snapshots, events=(), now=None, days=7):
                    "Security: no break-in attempts."))
     sites = m.get("website", {}).get("sites", {})
     if sites:
-        total_down = sum(o["count"] for o in down.values())
-        hl.append(("website", WARN if total_down else worst(r["status"] for r in findings if r["id"].startswith("site:")),
-                   "Website: online all week." if not total_down else "Website: down %s this week." % plural(total_down, "time")))
+        total_down = sum(o["count"] for u, o in down.items() if u not in still_down)
+        if still_down:
+            hl.append(("website", CRIT, "Website: DOWN right now."))
+        else:
+            hl.append(("website", WARN if total_down else worst(r["status"] for r in findings if r["id"].startswith("site:")),
+                       "Website: online all week." if not total_down else "Website: down %s this week." % plural(total_down, "time")))
         ssl_days = [v["ssl_days"] for v in sites.values() if v.get("ssl_days") is not None]
         if ssl_days:
             d = min(ssl_days)

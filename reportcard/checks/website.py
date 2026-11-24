@@ -129,7 +129,7 @@ def check_url(ctx, url, metrics):
     else:
         out.append(result("site:" + url, AREA, OK, "%s is online (%.1f s)." % (u.netloc, ms / 1000.0),
                           detail="HTTP %s in %d ms" % (code, ms)))
-    if u.scheme == "https":
+    if u.scheme == "https" and not (err or code is None):     # site down: the certificate cannot be read anyway
         left, problem, issuer = certificate(u.hostname, u.port or 443, timeout)
         m["ssl_days"] = None if left is None else round(left, 1)
         w, c = cfg.int("website", "ssl_warn_days"), cfg.int("website", "ssl_crit_days")

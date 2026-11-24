@@ -19,6 +19,8 @@ def e(s):
 def period_text(rep):
     a, b = rep["period"]
     fa, fb = time.localtime(a), time.localtime(b)
+    if fa[:3] == fb[:3]:
+        return time.strftime("%-d %B %Y", fb)
     if fa.tm_mon == fb.tm_mon and fa.tm_year == fb.tm_year:
         return "%d–%d %s" % (fa.tm_mday, fb.tm_mday, time.strftime("%B %Y", fb))
     return "%s – %s" % (time.strftime("%-d %b", fa), time.strftime("%-d %b %Y", fb))
