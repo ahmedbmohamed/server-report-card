@@ -37,7 +37,7 @@ chmod 755 /usr/local/bin/server-report-card
 install -d -m 700 "$CONF_DIR" /var/lib/server-report-card
 if [ ! -f "$CONF_DIR/config.ini" ]; then
   install -m 600 "$SRC/config.example.ini" "$CONF_DIR/config.ini"
-  sed -i "s/^server_name = .*/server_name = $(hostname)/; s/^client_name = .*/client_name =/; s|^urls = .*|urls =|; s/^domains = example.com/domains =/" "$CONF_DIR/config.ini"
+  sed -i "s/^server_name = .*/server_name = $(hostname)/; s/^client_name = .*/client_name =/; s|^urls = .*|urls =|; s/^domains = example.com/domains =/; s/^services = nginx/services =/" "$CONF_DIR/config.ini"
   NEW_CONFIG=1
 fi
 

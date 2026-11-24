@@ -25,6 +25,13 @@ def test_parse_ssh_counts_each_attempt_once():
     assert p["logins"] == [{"time": "2026-11-20T09:15:22+0100", "user": "deploy", "ip": "203.0.113.5", "method": "publickey"}]
 
 
+
+def test_failed_logins_from_own_team_are_typos():
+    lines = SSH_LOG.splitlines() + ["2026-11-20T09:14:00+0100 web sshd[2000]: Failed password for deploy from 203.0.113.5 port 60000 ssh2"]
+    p = security.parse_ssh(lines, ignore_ips={"203.0.113.5"})
+    assert p["attempts"] == 4 and p["typos"] == 1
+
+
 SS = """\
 tcp   LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    users:(("sshd",pid=812,fd=3))
 tcp   LISTEN 0      511          0.0.0.0:80        0.0.0.0:*    users:(("nginx",pid=900,fd=6))
@@ -32,12 +39,15 @@ tcp   LISTEN 0      200        127.0.0.1:5432      0.0.0.0:*    users:(("postgre
 tcp   LISTEN 0      80                 *:3306            *:*    users:(("mariadbd",pid=990,fd=19))
 tcp   LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    users:(("systemd-resolve",pid=700,fd=14))
 udp   UNCONN 0      0       0.0.0.0%ens33:68       0.0.0.0:*    users:(("dhclient",pid=650,fd=7))
+udp   UNCONN 0      0            0.0.0.0:45037      0.0.0.0:*    users:(("avahi-daemon",pid=700,fd=14))
+udp   UNCONN 0      0            0.0.0.0:51820      0.0.0.0:*
+udp   UNCONN 0      0            0.0.0.0:1194       0.0.0.0:*    users:(("openvpn",pid=880,fd=6))
 tcp   LISTEN 0      4096            [::]:22           [::]:*    users:(("sshd",pid=812,fd=4))
 """
 
 
 def test_parse_ss_keeps_public_ports_only():
-    assert security.parse_ss(SS) == {"22/tcp": "sshd", "80/tcp": "nginx", "3306/tcp": "mariadbd"}
+    assert security.parse_ss(SS) == {"22/tcp": "sshd", "80/tcp": "nginx", "3306/tcp": "mariadbd", "1194/udp": "openvpn", "51820/udp": ""}
 
 
 def test_users_and_admins():

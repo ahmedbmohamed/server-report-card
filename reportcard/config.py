@@ -64,6 +64,7 @@ DEFAULTS = {
         "memory_warn": "10",         # % available
         "memory_crit": "5",
         "services": "",              # e.g. nginx, postgresql
+        "ignore_failed_units": "mcelog.service",   # mcelog always fails on virtual machines (no hardware to watch)
     },
 }
 

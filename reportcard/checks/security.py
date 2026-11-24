@@ -19,9 +19,13 @@ RE_ACCEPTED = re.compile(r"Accepted (?P<method>\S+) for (?P<user>\S+) from (?P<i
 RE_PREFIX = re.compile(r"^(?P<ts>\S+) \S+ [^:\[]+(?:\[\d+\])?: (?P<msg>.*)$")
 
 
-def parse_ssh(lines):
-    """Count attack attempts and successful logins in sshd log lines (journalctl -o short-iso)."""
-    attempts = 0
+def parse_ssh(lines, ignore_ips=()):
+    """Count attack attempts and successful logins in sshd log lines (journalctl -o short-iso).
+
+    Failures from addresses in ignore_ips (people who also log in successfully) are counted
+    as "typos", not attacks.
+    """
+    attempts, typos = 0, 0
     ips, users = collections.Counter(), collections.Counter()
     logins = []
     for line in lines:
@@ -38,11 +42,13 @@ def parse_ssh(lines):
                 continue          # already counted by the "Invalid user" line
         if not f:
             f = RE_CLOSED.search(msg)
-        if f:
+        if f and f.group("ip") in ignore_ips:
+            typos += 1
+        elif f:
             attempts += 1
             ips[f.group("ip")] += 1
             users[f.group("user") or "(empty)"] += 1
-    return {"attempts": attempts, "top_ips": ips.most_common(5), "top_users": users.most_common(5),
+    return {"attempts": attempts, "typos": typos, "top_ips": ips.most_common(5), "top_users": users.most_common(5),
             "unique_ips": len(ips), "logins": logins}
 
 
@@ -73,7 +79,8 @@ def check_ssh(ctx, metrics):
     if err:
         out.append(result("ssh.log", AREA, UNKNOWN, "I could not read the login log.", detail=err))
         return out
-    p = parse_ssh(lines)
+    known_ips = set(ctx.state.get("known_login_ips", [])) | {lg["ip"] for lg in parse_ssh(lines)["logins"]}
+    p = parse_ssh(lines, ignore_ips=known_ips)
     metrics.update({"ssh_attempts": p["attempts"], "ssh_unique_ips": p["unique_ips"],
                     "ssh_top_ips": p["top_ips"], "ssh_top_users": p["top_users"], "logins": p["logins"]})
     sshd = sshd_settings()
@@ -81,16 +88,21 @@ def check_ssh(ctx, metrics):
     root = sshd.get("permitrootlogin", "")
     detail = "Top sources: %s" % (", ".join("%s (%d)" % x for x in p["top_ips"]) or "none")
     if p["attempts"]:
-        status = WARN if pw else INFO
+        status = INFO
         title = "%s to break in through SSH, from %s." % (
             plural(p["attempts"], "attempt"), plural(p["unique_ips"], "address", "addresses"))
-        if not pw:
-            title += " All failed: the server only accepts keys, not passwords."
+        title += " None got in." if not pw else " None got in, but passwords are allowed (see below)."
         out.append(result("ssh.attacks", AREA, status, title, kind="event", detail=detail,
-                          why="Password logins are allowed, so a weak password could be guessed." if pw else "",
-                          action="Turn off password logins and use SSH keys only." if pw else ""))
+                          ))
     else:
         out.append(result("ssh.attacks", AREA, OK, "No break-in attempts through SSH.", kind="event"))
+    if pw:
+        out.append(result("ssh.password", AREA, WARN, "SSH accepts passwords, not only keys.",
+                          why="Bots try millions of passwords; one weak password is enough to get in.",
+                          action="Use SSH keys and set PasswordAuthentication no.", detail="sshd -T: passwordauthentication yes"))
+    if p["typos"]:
+        out.append(result("ssh.typos", AREA, INFO, "%s from your own team's addresses (probably a typo)." % plural(p["typos"], "failed login"),
+                          kind="event"))
     if sshd and root in ("yes",):
         out.append(result("ssh.root", AREA, WARN, "The admin account (root) can log in directly over the internet.",
                           why="Root is the first account attackers try.",
@@ -194,6 +206,8 @@ def check_users(ctx):
 RISKY = {3306: "MySQL/MariaDB database", 5432: "PostgreSQL database", 6379: "Redis", 27017: "MongoDB",
          9200: "Elasticsearch", 11211: "Memcached", 2375: "Docker API", 5900: "VNC remote desktop",
          3389: "Remote desktop", 21: "FTP (unencrypted)", 23: "Telnet (unencrypted)", 445: "Windows file sharing"}
+LOCAL_HELPERS = {"avahi-daemon", "chronyd", "dhclient", "NetworkManager", "systemd-resolve", "systemd-network",
+                 "systemd-timesyn", "rsyslogd", "dhcpcd"}
 NAMES = {22: "SSH", 80: "website", 443: "secure website", 8080: "web app", 8443: "web app", 25: "email (SMTP)", 587: "email submission",
          465: "email (SMTPS)", 993: "email (IMAPS)", 143: "email (IMAP)", 110: "email (POP3)", 995: "email (POP3S)",
          53: "DNS", 123: "time sync"}
@@ -212,10 +226,11 @@ def parse_ss(text):
         addr = addr.strip("[]").split("%")[0]
         if not port.isdigit() or addr.startswith("127.") or addr in ("::1", "localhost"):
             continue
-        if proto == "udp" and int(port) in (68, 546, 5353, 323):   # DHCP client, mDNS, chrony local
-            continue
         m = re.search(r'users:\(\("([^"]+)"', line)
-        ports["%s/%s" % (port, proto)] = m.group(1) if m else ""
+        prog = m.group(1) if m else ""
+        if proto == "udp" and (int(port) in (68, 546, 5353, 323) or prog in LOCAL_HELPERS):
+            continue   # DHCP, mDNS (avahi), time sync: random local UDP ports that change at every restart
+        ports["%s/%s" % (port, proto)] = prog
     return ports
 
 
@@ -317,6 +332,14 @@ def auto_updates():
     return "enabled" in out
 
 
+def auto_updates_failing():
+    if os_family() == "debian":
+        rc, out, _ = sh(["systemctl", "is-failed", "apt-daily-upgrade.service"], timeout=10)
+        return out.strip() == "failed"
+    rc, out, _ = sh(["systemctl", "is-failed", "dnf-automatic.service", "dnf-automatic-install.service"], timeout=10)
+    return "failed" in out.split()
+
+
 def check_updates(ctx, metrics):
     fam = os_family()
     if fam == "debian":
@@ -351,9 +374,14 @@ def check_updates(ctx, metrics):
                           detail=", ".join(total[:30])))
     else:
         out.append(result("updates", AREA, OK, "The system is fully up to date."))
-    out.append(result("updates.auto", AREA, OK if auto else INFO,
-                      "Security updates install automatically." if auto else "Updates are installed by hand, not automatically.",
-                      action="" if auto else "Consider automatic security updates (unattended-upgrades / dnf-automatic)."))
+    if auto and auto_updates_failing():
+        out.append(result("updates.auto", AREA, WARN, "Automatic updates are turned on, but the last run failed.",
+                          why="The server believes it is updating itself, but it is not.",
+                          action="Check why it fails: systemctl status dnf-automatic (or apt-daily-upgrade)."))
+    else:
+        out.append(result("updates.auto", AREA, OK if auto else INFO,
+                          "Security updates install automatically." if auto else "Updates are installed by hand, not automatically.",
+                          action="" if auto else "Consider automatic security updates (unattended-upgrades / dnf-automatic)."))
     need, why = reboot_needed()
     if need:
         out.append(result("reboot", AREA, WARN, "The server needs a restart to finish installing updates.",

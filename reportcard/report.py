@@ -47,16 +47,12 @@ def weekly_ssh(snapshots, statuses):
     for s in snapshots:
         for ip, n in s["metrics"].get("security", {}).get("ssh_top_ips", []):
             ips[ip] += n
-    status = worst(statuses.get("ssh.attacks", [OK]))
     if not total:
         return result("ssh.attacks", "security", OK, "No break-in attempts through SSH this week.", kind="event"), total, bans
     title = "%s to break in through SSH this week" % plural(total, "attempt")
     title += "; Fail2ban blocked %s." % plural(bans, "address", "addresses") if bans else "."
-    if status == INFO:
-        title += " All failed: the server only accepts keys, not passwords."
-    r = result("ssh.attacks", "security", status, title, kind="event",
-               why="Password logins are allowed, so a weak password could be guessed." if status == WARN else "",
-               action="Turn off password logins and use SSH keys only." if status == WARN else "",
+    title += " None got in."
+    r = result("ssh.attacks", "security", INFO, title, kind="event",
                detail="Top sources: " + ", ".join("%s (%d)" % x for x in ips.most_common(5)))
     return r, total, bans
 

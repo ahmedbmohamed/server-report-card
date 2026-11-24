@@ -116,7 +116,8 @@ def check_services(ctx, metrics):
                               action="Restart it and find out why it stopped.",
                               detail="systemctl is-active %s -> %s" % (unit, state)))
     watched = {(n if "." in n else n + ".service") for n in ctx.cfg.list("server", "services")}
-    other = [u for u in failed if u not in watched]
+    ignored = {(n if "." in n else n + ".service") for n in ctx.cfg.list("server", "ignore_failed_units")}
+    other = [u for u in failed if u not in watched and u not in ignored]
     if other:
         out.append(result("services.failed", AREA, WARN, "%s failed: %s." % (plural(len(other), "background service"), ", ".join(other)),
                           why="Something that should run on the server is broken.",
