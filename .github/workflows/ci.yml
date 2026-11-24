@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff ansible-lint
+      - run: ruff check .
+      - run: cd ansible && ansible-lint site.yml
+      - run: shellcheck install.sh
+
+  test:
+    name: test (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["rockylinux:8", "rockylinux:9", "ubuntu:22.04", "ubuntu:24.04"]
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install Python and tools
+        run: |
+          if command -v dnf >/dev/null; then
+            dnf -y -q install python3 python3-pip openssl iproute git
+            python3 -m pip install -q pytest
+          else
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3 python3-pytest openssl iproute2 git ca-certificates
+          fi
+          python3 --version
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: python3 -m pytest -q
+      - name: Live check (must not crash, even without systemd)
+        run: |
+          cat > /tmp/ci.ini <<'INI'
+          [report]
+          data_dir = /tmp/rc
+          [website]
+          urls = https://github.com
+          [email_dns]
+          domains = github.com
+          INI
+          python3 -m reportcard -c /tmp/ci.ini check || true
+          python3 -m reportcard -c /tmp/ci.ini collect
+          python3 -m reportcard -c /tmp/ci.ini report --out /tmp/report.html
+          python3 -m reportcard demo --out /tmp/demo.html
+          python3 - <<'PY'
+          import glob, json
+          snap = json.load(open(glob.glob("/tmp/rc/snapshots/*.json")[0]))
+          broken = [r["id"] for r in snap["results"] if r["id"].endswith(".error")]
+          print("results:", len(snap["results"]), "broken checks:", broken)
+          assert not broken, broken
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-${{ strategy.job-index }}
+          path: /tmp/*.html
