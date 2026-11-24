@@ -13,7 +13,7 @@ UNITS="collect alerts report restore-test"
 
 if [ "${1:-}" = "--uninstall" ]; then
   for u in $UNITS; do systemctl disable --now "server-report-card-$u.timer" 2>/dev/null || true; done
-  rm -f /etc/systemd/system/server-report-card-*.{service,timer} /usr/local/bin/server-report-card
+  rm -f /etc/systemd/system/server-report-card-*.{service,timer} /usr/local/bin/server-report-card /usr/sbin/server-report-card
   rm -rf "$PREFIX"
   systemctl daemon-reload
   echo "Removed. Config ($CONF_DIR) and data (/var/lib/server-report-card) were kept."
@@ -34,6 +34,8 @@ cat > /usr/local/bin/server-report-card <<EOF
 exec $PY -I -c 'import sys; sys.path.insert(0, "$PREFIX"); from reportcard.cli import main; sys.exit(main())' "\$@"
 EOF
 chmod 755 /usr/local/bin/server-report-card
+# sudo on RHEL does not search /usr/local/bin (secure_path), so also link it where sudo looks
+ln -sf /usr/local/bin/server-report-card /usr/sbin/server-report-card
 
 install -d -m 700 "$CONF_DIR" /var/lib/server-report-card
 if [ ! -f "$CONF_DIR/config.ini" ]; then

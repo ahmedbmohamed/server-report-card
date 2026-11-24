@@ -35,6 +35,12 @@
       # -I: never load code from the current folder or user site-packages (this runs as root)
       exec /usr/bin/python3 -I -c 'import sys; sys.path.insert(0, "/opt/server-report-card"); from reportcard.cli import main; sys.exit(main())' "$@"
 
+- name: Command is found by sudo on RHEL (secure_path has no /usr/local/bin)
+  ansible.builtin.file:
+    src: /usr/local/bin/server-report-card
+    dest: /usr/sbin/server-report-card
+    state: link
+
 - name: Config is written
   ansible.builtin.template:
     src: config.ini.j2

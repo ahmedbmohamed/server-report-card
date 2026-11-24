@@ -117,6 +117,8 @@ def check_services(ctx, metrics):
                               detail="systemctl is-active %s -> %s" % (unit, state)))
     watched = {(n if "." in n else n + ".service") for n in ctx.cfg.list("server", "services")}
     ignored = {(n if "." in n else n + ".service") for n in ctx.cfg.list("server", "ignore_failed_units")}
+    # automatic updates failing is reported once, by the security updates check
+    ignored |= {"dnf-automatic.service", "dnf-automatic-install.service", "apt-daily-upgrade.service"}
     other = [u for u in failed if u not in watched and u not in ignored]
     if other:
         out.append(result("services.failed", AREA, WARN, "%s failed: %s." % (plural(len(other), "background service"), ", ".join(other)),
